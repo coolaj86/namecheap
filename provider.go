@@ -408,6 +408,20 @@ func (p *Provider) SetRecords(ctx context.Context, zone string, records []libdns
 
 	allHosts := append(existingHosts, hostRecords...)
 
+	// URL redirects cannot coexist with A/AAAA records at the same name.
+	nameTypes := make(map[string]map[string]bool)
+	for _, h := range allHosts {
+		if nameTypes[h.Name] == nil {
+			nameTypes[h.Name] = make(map[string]bool)
+		}
+		nameTypes[h.Name][string(h.RecordType)] = true
+	}
+	for name, types := range nameTypes {
+		if (types["URL"] || types["URL301"]) && (types["A"] || types["AAAA"]) {
+			return nil, fmt.Errorf("namecheap %s: conflicting records at %q — URL redirect cannot coexist with A/AAAA record", strings.TrimSuffix(zone, "."), name)
+		}
+	}
+
 	_, err = client.SetHosts(ctx, domain, allHosts)
 	if err != nil {
 		return nil, err

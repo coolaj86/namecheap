@@ -168,7 +168,6 @@ func addToValues(host HostRecord, hostNumber int, values *url.Values) {
 	setValueIfPresent("Address", string(host.Address))
 	setValueIfPresent("MXPref", host.MXPref)
 	setValueIfPresent("TTL", strconv.Itoa(int(host.TTL)))
-	setValueIfPresent("EmailType", host.EmailType)
 	setValueIfPresent("Flag", strconv.Itoa(int(host.Flag)))
 	setValueIfPresent("Tag", host.Tag)
 }
@@ -296,6 +295,15 @@ func (c *Client) buildRequest(ctx context.Context, command string, opts requestP
 
 	for i, host := range opts.Hosts {
 		addToValues(host, i+1, &q)
+	}
+
+	// EmailType is a global (non-per-host) parameter in the Namecheap API.
+	// Set it when a host carries an email mode such as "MX".
+	for _, host := range opts.Hosts {
+		if host.EmailType != "" && host.EmailType != "0" {
+			q.Set("EmailType", host.EmailType)
+			break
+		}
 	}
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.endpointURL.String(), strings.NewReader(q.Encode()))
