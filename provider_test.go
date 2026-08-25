@@ -18,6 +18,19 @@ var (
 	oneHour       = time.Duration(1 * time.Hour)
 )
 
+func TestUnsupportedRecordType(t *testing.T) {
+	provider := &Provider{APIKey: "test", User: "test", ClientIP: "127.0.0.1"}
+	record := &libdns.SRV{Name: "_http._tcp", Service: "http", Transport: "tcp", Target: "target.example.com."}
+
+	_, err := provider.SetRecords(context.Background(), "example.com.", []libdns.Record{record})
+	if err == nil {
+		t.Fatal("SetRecords(SRV) succeeded; want unsupported record type error")
+	}
+	if got, want := err.Error(), "namecheap API does not support SRV records"; got != want {
+		t.Fatalf("error = %q, want %q", got, want)
+	}
+}
+
 func TestSetRecordsUpdatesExisting(t *testing.T) {
 	testCases := map[string]struct {
 		existingRecords []libdns.Record

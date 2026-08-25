@@ -17,6 +17,23 @@ import (
 	"github.com/libdns/namecheap/internal/namecheap"
 )
 
+// validateRecordType rejects record types not supported by Namecheap's setHosts API.
+//
+// The API record types are documented at:
+// https://www.namecheap.com/support/api/methods/domains-dns/set-hosts/
+//
+// Namecheap's web UI supports SRV, but its API does not:
+// https://www.namecheap.com/support/knowledgebase/article.aspx/318/2237/can-i-add-an-srv-record-for-a-domain/
+func validateRecordType(record libdns.Record) error {
+	typeName := strings.ToUpper(record.RR().Type)
+	switch typeName {
+	case "A", "AAAA", "ALIAS", "CAA", "CNAME", "MX", "MXE", "NS", "TXT", "URL", "URL301", "FRAME":
+		return nil
+	default:
+		return fmt.Errorf("namecheap API does not support %s records", typeName)
+	}
+}
+
 func parseIntoHostRecord(record libdns.Record) namecheap.HostRecord {
 	switch rr := record.(type) {
 	case *libdns.Address:
@@ -350,6 +367,9 @@ func (p *Provider) AppendRecords(ctx context.Context, zone string, records []lib
 	// since we only want to add new ones and not update existing ones.
 	var appendedRecords []libdns.Record
 	for _, record := range records {
+		if err := validateRecordType(record); err != nil {
+			return nil, err
+		}
 		host := parseIntoHostRecord(record)
 		if _, found := existingHostSet[host.AppendKey()]; !found {
 			hosts = append(hosts, host)
@@ -377,6 +397,9 @@ func (p *Provider) SetRecords(ctx context.Context, zone string, records []libdns
 
 	var hostRecords []namecheap.HostRecord
 	for _, r := range records {
+		if err := validateRecordType(r); err != nil {
+			return nil, err
+		}
 		hostRecords = append(hostRecords, parseIntoHostRecord(r))
 	}
 
@@ -454,6 +477,9 @@ func (p *Provider) DeleteRecords(ctx context.Context, zone string, records []lib
 
 	hostsToRemove := make(map[namecheap.HostRecordKey]namecheap.HostRecord)
 	for _, record := range records {
+		if err := validateRecordType(record); err != nil {
+			return nil, err
+		}
 		host := parseIntoHostRecord(record)
 		hostsToRemove[host.DeleteKey()] = host
 	}

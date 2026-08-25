@@ -454,6 +454,9 @@ func doRequest(req *http.Request) (*apiResponse, error) {
 	if err != nil {
 		return nil, err
 	}
+	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
+		return nil, fmt.Errorf("namecheap API: HTTP %d: %s", resp.StatusCode, strings.TrimSpace(string(body)))
+	}
 
 	var apiResp apiResponse
 	err = xml.Unmarshal(body, &apiResp)
@@ -463,6 +466,9 @@ func doRequest(req *http.Request) (*apiResponse, error) {
 
 	if len(apiResp.Errors) > 0 {
 		return nil, fmt.Errorf("namecheap api returned error in response. Err: %s", apiResp.Errors)
+	}
+	if result := apiResp.CommandResponse.DomainDNSSetHostsResult; result != nil && !result.IsSuccess {
+		return nil, fmt.Errorf("namecheap API rejected setHosts for %s", result.Domain)
 	}
 
 	return &apiResp, nil
