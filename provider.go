@@ -249,10 +249,10 @@ func (p *Provider) getDomain(ctx context.Context, zone string) (namecheap.Domain
 	// See if our zone is a substring match of any of the tlds.
 	var domain namecheap.Domain
 	for _, tld := range tlds {
-		if strings.HasSuffix(zone, tld) {
+		if before, ok := strings.CutSuffix(zone, tld); ok {
 			domain = namecheap.Domain{
 				TLD: tld,
-				SLD: strings.TrimSuffix(strings.TrimSuffix(zone, tld), "."),
+				SLD: strings.TrimSuffix(before, "."),
 			}
 			break
 		}

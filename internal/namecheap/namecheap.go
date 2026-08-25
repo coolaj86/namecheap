@@ -361,11 +361,11 @@ func (c *Client) GetTLDs(ctx context.Context) ([]TLD, error) {
 type apiErrors []apiError
 
 func (e apiErrors) String() string {
-	var errMsg string
+	var errMsg strings.Builder
 	for i, apiError := range e {
-		errMsg += fmt.Sprintf("Error%d: %s\t", i, apiError.Err)
+		errMsg.WriteString(fmt.Sprintf("Error%d: %s\t", i, apiError.Err))
 	}
-	return errMsg
+	return errMsg.String()
 }
 
 // Go XML doesn't support unmarshaling self closing tags e.g. <Errors /> so need to
