@@ -65,6 +65,24 @@ func parseIntoHostRecord(record libdns.Record) namecheap.HostRecord {
 			TTL:        uint16(rr.TTL.Seconds()),
 			Address:    fmt.Sprintf("%d %s %s", rr.Flags, rr.Tag, rr.Value),
 		}
+	case libdns.MX:
+		// libdns.RR.Parse() returns value types, not pointers, so the
+		// *libdns.MX case above does not match.  Without this case, MX
+		// records fall through to the default which puts "10 host" in
+		// Address and leaves MXPref/EmailType empty — the Namecheap API
+		// then rejects or mishandles the record.
+		target := rr.Target
+		if !strings.HasSuffix(target, ".") {
+			target = target + "."
+		}
+		return namecheap.HostRecord{
+			RecordType: namecheap.MX,
+			Name:       rr.Name,
+			TTL:        uint16(rr.TTL.Seconds()),
+			Address:    target,
+			MXPref:     strconv.Itoa(int(rr.Preference)),
+			EmailType:  "MX",
+		}
 	default:
 		commonRR := record.RR()
 		return namecheap.HostRecord{
