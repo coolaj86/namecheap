@@ -312,6 +312,31 @@ func TestSetHosts(t *testing.T) {
 	}
 }
 
+func TestSetHostsRejected(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(`<?xml version="1.0" encoding="UTF-8"?>
+<ApiResponse xmlns="https://api.namecheap.com/xml.response" Status="OK">
+  <Errors />
+  <CommandResponse Type="namecheap.domains.dns.setHosts">
+    <DomainDNSSetHostsResult Domain="domain.com" IsSuccess="false" />
+  </CommandResponse>
+</ApiResponse>`))
+	}))
+	t.Cleanup(ts.Close)
+
+	c, err := namecheap.NewClient("testAPIKey", "testUser", namecheap.WithEndpoint(ts.URL), namecheap.WithClientIP("localhost"))
+	if err != nil {
+		t.Fatalf("Error creating NewClient. Err: %s", err)
+	}
+
+	_, err = c.SetHosts(context.Background(), namecheap.Domain{TLD: "com", SLD: "domain"}, []namecheap.HostRecord{{
+		Name: "_http._tcp", RecordType: "SRV", Address: "10 0 3080 target.example.com.", TTL: 300,
+	}})
+	if err == nil {
+		t.Fatal("SetHosts succeeded; want rejected response error")
+	}
+}
+
 func TestGetHostsError(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(errorResponse))
